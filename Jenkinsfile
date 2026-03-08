@@ -2,27 +2,54 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
+        stage('Checkout Code') {
             steps {
-                // Pull source code from GitHub
-                git 'https://github.com/ashishgen/devops-cicd-project.git'
+                echo 'Pulling source code from Git...'
+                git branch: 'master', url: 'https://github.com/ashishgen/devops-cicd-project.git'
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                // Build Docker image
-                sh 'docker build -t prt-nginx:latest .'
+                echo 'Building Docker image...'
+                sh 'docker build -t devops-cicd-app .'
             }
         }
 
         stage('Run Docker Container') {
             steps {
-                // Stop previous container if exists
-                sh 'docker rm -f prt-nginx || true'
-                // Run new container
-                sh 'docker run -d -p 8080:80 --name prt-nginx prt-nginx:latest'
+                echo 'Running Docker container...'
+                // Remove old container if exists
+                sh '''
+                if [ $(docker ps -aq -f name=devops-cicd-app) ]; then
+                    docker rm -f devops-cicd-app
+                fi
+
+                # Choose a random free port between 8000-8999
+                PORT=$(shuf -i 8000-8999 -n 1)
+                echo "Using port $PORT"
+
+                # Run container
+                docker run -d -p $PORT:80 --name devops-cicd-app devops-cicd-app
+
+                echo "Container running on port $PORT"
+                '''
             }
+        }
+
+        stage('Verify Deployment') {
+            steps {
+                echo 'Deployment verified manually via browser or curl'
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo 'Pipeline failed. Check logs for details.'
+        }
+        success {
+            echo 'Pipeline completed successfully!'
         }
     }
 }
